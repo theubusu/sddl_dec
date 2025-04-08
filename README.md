@@ -10,7 +10,7 @@ sddl_dec.py <SDDL.SEC file> (-n)
 Dependencies: Crypto.Cipher os sys struct zlib shutil tqdm tarfile
 
 The output will vary depending on the year of model the file comes from.
-Android models will output a file that contains the bootloader, device tree and a squashfs image of the root (binwalk)
+FirefoxOS models will output a file that contains the bootloader, device tree and a squashfs image of the root (binwalk)
 Most Smart 2014-2019? models will output the rootfs in tgz format.
 Models 2013 and older, and some "dumb" TV models will output a file of unknown format. Running it through binwalk shows many files present in there. My suspection is that it contains a UFS filesystem, which is what older Panasonic TVs used (yeah, they ran FreeBSD).
 
