@@ -144,13 +144,15 @@ print("\n(3/3) Combining...")
 
 if mode == 1:
     output_file='root.tgz'
+    start_range = 1
 else:
    output_file='out.bin'
+   start_range = 0
 
 def merge():
     combined_data = bytearray()
 
-    for i in tqdm(range(1, total_parts)):
+    for i in tqdm(range(start_range, total_parts)):
         filename = f"sddldec_temp/PEAKS.F{i:02d}.out"
         try:
             with open(filename, 'rb') as f:
