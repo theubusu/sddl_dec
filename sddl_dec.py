@@ -106,7 +106,7 @@ with open("PEAKS.bin", "ab") as out_file:
         #    f.write(decrypt_payload_unpad(file_content))
         
         #only extract PEAKS contents
-        if filenm.startswith("PEAKS"):
+        if filenm.startswith("PEAKS.F"):
     
             decrypted_data = decrypt_payload_unpad(file_content)
     
