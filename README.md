@@ -1,19 +1,19 @@
 # sddl_dec
-Tool for decrypting Panasonic TV SDDL.SEC files. New version 3.0
-This Python script will decrypt and extract the files from an SDDL.SEC firmware update package used on Panasonic TVs.
-The deobfuscation function is made by NeSE Team for JustCTF 2022 and found [here](https://nese.team/posts/justctf). Thank you!
+Tool for decrypting Panasonic TV SDDL.SEC files. New version 3.0  
+This Python script will decrypt and extract the files from an SDDL.SEC firmware update package used on Panasonic TVs.  
+The deobfuscation function is made by NeSE Team for JustCTF 2022 and found [here](https://nese.team/posts/justctf). Thank you!  
 ## Support
 The provided key file can extract most SDDL.SEC files from TVs released between 2011 and 2020. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.
 ## Usage
 Dependancies: `Crypto.Cipher`
-`sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`
-`input_file` - The SDDL.SEC file to extract.
-`crypto_key_file` - Crypto key to be used to decrypt the file.
-`output_folder` - Folder to save extracted files to. Default: "out"
-`-h` - Show help message.
-`-l` - List contents of the file without extracting them.
-`-nj` - Don't join PEAKS files. (read more below)
-`-kt` - Keep TXT files. (read more below)
+`sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`  
+`input_file` - The SDDL.SEC file to extract.  
+`crypto_key_file` - Crypto key to be used to decrypt the file.  
+`output_folder` - Folder to save extracted files to. Default: "out"  
+`-h` - Show help message.  
+`-l` - List contents of the file without extracting them.  
+`-nj` - Don't join PEAKS files. (read more below)  
+`-kt` - Keep TXT files. (read more below)  
 ## About SDDL.SEC and the output of the program
 An SDDL.SEC file is an encrypted, obfuscated and partially compressed archive that contains the firmware data for the TV.
 It can consist of:
