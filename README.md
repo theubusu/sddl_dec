@@ -1,19 +1,28 @@
 # sddl_dec
-Tool for decrypting Panasonic TV SDDL.SEC files.  
-This python script will decrypt and extract the files and PEAKS data from most SDDL.SEC files of a Panasonic TV.  
-Supported TVs are from years 2011-2020. (Since 2021 Panasonic stopped providing downloadable software update files, and files older than 2011 seem to use a different format.)
-
-To use, download both the sddl_dec.py file, and the crypto_key file.
-Usage:  sddl_dec.py <SDDL.SEC file>
-
-- Dependencies: Crypto.Cipher
-
-The output will vary depending on the year of model the file comes from.  
-FirefoxOS models will output a file that contains the bootloader, device tree and a squashfs image of the root (binwalk)  
-Most Smart 2014-2019? models will output the rootfs in tgz format.  
-Models 2013 and older, and some "dumb" TV models will output a containing UFS filesystem, and FreeBSD kernel(yes thats what panasonic tvs used to run on.) It also contains other currently unknown data. 
-
-Released new 2.0 version after studying the code - it is faster and does not use temp folders anymore, doesn't rely on hardcoded code,  directly deciphers and appends PEAKS data into a PEAKS.bin file. However this version is harder to use for investigating SDDL.SEC files. Feel free to use older version for that.
-
-This script makes use of code by NeSE Team found at https://nese.team/posts/justctf/ .
-
+Tool for decrypting Panasonic TV SDDL.SEC files. New version 3.0
+This Python script will decrypt and extract the files from an SDDL.SEC firmware update package used on Panasonic TVs.
+The deobfuscation function is made by NeSE Team for JustCTF 2022 and found [here](https://nese.team/posts/justctf). Thank you!
+## Support
+The provided key file can extract most SDDL.SEC files from TVs released between 2011 and 2020. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.
+## Usage
+Dependancies: `Crypto.Cipher`
+`sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`
+`input_file` - The SDDL.SEC file to extract.
+`crypto_key_file` - Crypto key to be used to decrypt the file.
+`output_folder` - Folder to save extracted files to. Default: "out"
+`-h` - Show help message.
+`-l` - List contents of the file without extracting them.
+`-nj` - Don't join PEAKS files. (read more below)
+`-kt` - Keep TXT files. (read more below)
+## About SDDL.SEC and the output of the program
+An SDDL.SEC file is an encrypted, obfuscated and partially compressed archive that contains the firmware data for the TV.
+It can consist of:
+- SDIT.FDI - looks to be some ort of partition table, or table of contents, format is currently unknown.
+- A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because somtimes theres over 40 of them (why?) and they are not important. You can prevent that with the `-kt` option.)
+- PEAKS.FXX Files - these are the main firmware data split into chunks, usually of 2/4MB of size - they are combined into one PEAKS.bin file by default, you can prevent this by using `-nj` option.
+The output of the PEAKS files varies depending on the TV's platform, from my findings the structure is:
+    - For 2011-2013 models, and some later "dumb" models, the output contains the FreeBSD kernel, UFS rootfs filesystem and a UFS filesystem (/usr) compressed by unknown method (This format is complicated and not yet fully known)
+    - For 2014-~2019? models - the output is a tgz archive containing the rootfs filesystem
+    - For 2020+ models - the output contains a bootloader, DTB and rootfs squashfs filesystem (binwalk)
+- PEAKSBT.FXX - some sort of firmware file, BT - maybe BlueTooth? or BooT?
+- STM.FXX - another kind of firmware file, unknown
