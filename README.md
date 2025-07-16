@@ -17,12 +17,13 @@ Dependancies: `Crypto.Cipher`
 ## About SDDL.SEC and the output of the program
 An SDDL.SEC file is an encrypted, obfuscated and partially compressed archive that contains the firmware data for the TV.
 It can consist of:
-- SDIT.FDI - looks to be some ort of partition table, or table of contents, format is currently unknown.
+- SDIT.FDI - looks to be some sort of partition table, or table of contents, format is currently unknown.
 - A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because somtimes theres over 40 of them (why?) and they are not important. You can prevent that with the `-kt` option.)
 - PEAKS.FXX Files - these are the main firmware data split into chunks, usually of 2/4MB of size - they are combined into one PEAKS.bin file by default, you can prevent this by using `-nj` option.
 The output of the PEAKS files varies depending on the TV's platform, from my findings the structure is:
     - For 2011-2013 models, and some later "dumb" models, the output contains the FreeBSD kernel, UFS rootfs filesystem and a UFS filesystem (/usr) compressed by unknown method (This format is complicated and not yet fully known)
     - For 2014-~2019? models - the output is a tgz archive containing the rootfs filesystem
     - For 2020+ models - the output contains a bootloader, DTB and rootfs squashfs filesystem (binwalk)
-- PEAKSBT.FXX - some sort of firmware file, BT - maybe BlueTooth? or BooT?
-- STM.FXX - another kind of firmware file, unknown
+- PEAKSBT.FXX - some sort of firmware file, BT - maybe BooT(loader)? or BlueTooth?
+- BOOT.FXX - bootloader
+- STM.FXX - another kind of firmware file, maybe also a bootloader
