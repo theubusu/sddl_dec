@@ -101,12 +101,14 @@ def read_sddl(input_file, crypto_key_file, output_folder):
             decrypted_data = decrypt_payload_unpad(key, iv, file_content)
             if decrypted_data.startswith(b'\x11\x22\x33\x44') and not filenm == "SDIT.FDI": #header of obfuscated file, SDIT.FDI also has this header but seems to work differently so its skipped
                 print("- Deciphering file...")
+                #control bytes
+                control_bytes = decrypted_data[34:36]
                 #size of data after decryptiom
                 data_size = struct.unpack('>I', decrypted_data[36:40])[0]
                 #verify the data size
                 assert len(decrypted_data[48:]) == data_size
                 decipher_data = decipher(decrypted_data[48:], len(decrypted_data[48:]))
-                if decipher_data.startswith(b'\x78\x9C'):
+                if control_bytes.startswith(b'\x03'):
                     #decompress a compressed file
                     print("-- Decompressing file...")
                     out_data = zlib.decompress(decipher_data, zlib.MAX_WBITS)      
