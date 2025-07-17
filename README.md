@@ -16,8 +16,8 @@ Dependancies: `Crypto.Cipher`
 `-kt` - Keep TXT files. (read more below)  
 ## About SDDL.SEC and the output of the program
 An SDDL.SEC file is an encrypted, obfuscated and partially compressed archive that contains the firmware data for the TV.
-It has a 32 byte header, that mostly remains the same between files, but its structure is unknown, and a 128 or 256(in later files) byte footer, which is most likely a signature.
-It can consist of:
+It has a 32 byte header, that mostly remains the same between files, but its structure is unknown, and a 128 or 256(in later files) byte footer, which is most likely a signature.  
+The main contents of the file can consist of:
 - SDIT.FDI - looks to be some sort of partition table, or table of contents, format is currently unknown.
 - A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because somtimes theres over 40 of them (why?) and they are not important. You can prevent that with the `-kt` option.)
 - PEAKS.FXX Files - these are the main firmware data split into chunks, usually of 2/4MB of size - they are combined into one PEAKS.bin file by default, you can prevent this by using `-nj` option.
