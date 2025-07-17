@@ -108,11 +108,11 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                 #verify the data size
                 assert len(decrypted_data[48:]) == data_size
                 decipher_data = decipher(decrypted_data[48:], len(decrypted_data[48:]))
-                if control_bytes.startswith(b'\x03'):
+                if control_bytes.startswith(b'\x03'): #03 - file is compressed
                     #decompress a compressed file
                     print("-- Decompressing file...")
                     out_data = zlib.decompress(decipher_data, zlib.MAX_WBITS)      
-                else:
+                else: #02 - file is not compressed
                     #file is not compressed, write raw data.
                     print("-- Skipping uncompressed file...")
                     out_data = decipher_data
