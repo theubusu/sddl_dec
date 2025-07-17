@@ -69,7 +69,7 @@ def read_sddl(input_file, crypto_key_file, output_folder):
     #initial offset = lenght of SDDL.SEC file header(0x20)
     off = 0x20
     
-    while off < len(sddl_buf)-0x80:
+    while off < len(sddl_buf):
         #read header of entry with 0x20 lenght and decrypt it
         hdr = decrypt_payload_unpad(key, iv, sddl_buf[off:off+0x20])
         #read null-terminated string - file name
@@ -78,8 +78,15 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         try:
             file_size = int(hdr[16:].decode())
         except ValueError as e:
-            print("!!Decryption error!! This file and key are not compatible!")
-            return
+            # SDDL files can have a footer(signature?) of 0x80 OR 0x100 lenght in later ones, and there is no good way to detect it before entering the while loop and the footer has no common header.
+            # so we can assume if a file fails to decode at negative offsets 0x80 or 0x100, that is the footer and it can be skipped.
+            if off == len(sddl_buf)-0x80 or off == len(sddl_buf)-0x100:
+                print("Found footer, ignoring..") 
+                break
+            else:
+                print("!!Decryption error!! This file and key are probably not compatible!")
+                return
+                
         #read the files' content from buf with the read file size
         file_content = sddl_buf[off+0x20:off+0x20+file_size]
         #advancing the offset for next file
@@ -135,8 +142,8 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         print("\nScript done!")
 
 if __name__ == "__main__":
-    print("sddl_dec Tool Version 3.0")
-    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.0')
+    print("sddl_dec Tool Version 3.1")
+    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.1')
     
     parser.add_argument('-l', action='store_true', help='List the files but dont extract them.')
     parser.add_argument('-nj', action='store_true', help='Dont join PEAKS.F files.')
