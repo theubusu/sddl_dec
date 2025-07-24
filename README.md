@@ -2,9 +2,9 @@
 Tool for decrypting Panasonic TV SDDL.SEC files. New version 3.0  
 This Python script will decrypt and extract the files from an SDDL.SEC firmware update package used on Panasonic TVs.  
 This script uses information about SDDL.SEC files found by NeSE Team for JustCTF 2022 and found [here](https://nese.team/posts/justctf) (search for SDDL.SEC). Thank you!  
+**Notice:** This script will not directly extract the contents of the firmware by itself! It only unpacks and decrypts the SDDL.SEC file. To inspect the output of the file, use a tool like [binwalk](github.com/ReFirmLabs/binwalk). To see what you can expect, read more below.
 ## Support
 The provided key file can extract *most* SDDL.SEC files from TVs released after 2011. Older files seem to use a different key/obfuscation method of the key. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.  
-**Notice:** This script will not directly extract the contents of the firmware by itself! It only unpacks and decrypts the SDDL.SEC file itself. To inspect the output of the file, use a tool like [binwalk](github.com/ReFirmLabs/binwalk). To see what you can expect, read more below.
 ## Usage
 Dependancies: `Crypto.Cipher`  
 `sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`  
