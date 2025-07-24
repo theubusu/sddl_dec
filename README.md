@@ -3,7 +3,8 @@ Tool for decrypting Panasonic TV SDDL.SEC files. New version 3.0
 This Python script will decrypt and extract the files from an SDDL.SEC firmware update package used on Panasonic TVs.  
 This script uses information about SDDL.SEC files found by NeSE Team for JustCTF 2022 and found [here](https://nese.team/posts/justctf) (search for SDDL.SEC). Thank you!  
 ## Support
-The provided key file can extract *most* SDDL.SEC files from TVs released after 2011. Older files seem to use a different key/obfuscation method of the key. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.
+The provided key file can extract *most* SDDL.SEC files from TVs released after 2011. Older files seem to use a different key/obfuscation method of the key. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.  
+**Notice:** This script will not directly extract the contents of the firmware by itself! It only unpacks and decrypts the SDDL.SEC file itself. To inspect the output of the file, use a tool like [binwalk](github.com/ReFirmLabs/binwalk). To see what you can expect, read more below.
 ## Usage
 Dependancies: `Crypto.Cipher`  
 `sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`  
@@ -25,6 +26,6 @@ The output of the PEAKS files varies depending on the TV's platform, from my fin
     - For 2011-2013 models, and some later "dumb" models, the output contains the FreeBSD kernel, UFS rootfs filesystem and a UFS filesystem (/usr) compressed by unknown method (This format is complicated and not yet fully known)
     - For 2014-~2018? models - the output is a tgz archive containing the rootfs filesystem
     - For 2019+ models - the output contains a bootloader, DTB and rootfs squashfs filesystem (binwalk)
-- PEAKSBT.FXX - some sort of firmware file, BT - maybe BooT(loader)? or BlueTooth?
+- PEAKSBT.FXX - bootloader
 - BOOT.FXX - bootloader
-- STM.FXX - another kind of firmware file, maybe also a bootloader
+- STM.FXX - some kind of firmware file, unknown
