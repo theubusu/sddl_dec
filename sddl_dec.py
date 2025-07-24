@@ -80,8 +80,11 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         except ValueError as e:
             # SDDL files can have a footer(signature?) of 0x80 OR 0x100 lenght in later ones, and there is no good way to detect it before entering the while loop and the footer has no common header.
             # so we can assume if a file fails to decode at negative offsets 0x80 or 0x100, that is the footer and it can be skipped.
-            if off == len(sddl_buf)-0x80 or off == len(sddl_buf)-0x100:
-                print("Found footer, ignoring..") 
+            if off == len(sddl_buf)-0x80:
+                print("\nFound footer at 0x80 end, skipping") 
+                break
+            if off == len(sddl_buf)-0x100:
+                print("\nFound footer at 0x100 end!, skipping") 
                 break
             else:
                 print("!!Decryption error!! This file and key are probably not compatible!")
@@ -91,7 +94,7 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         file_content = sddl_buf[off+0x20:off+0x20+file_size]
         #advancing the offset for next file
         off += 0x20 + file_size
-        print('File: ' + file_name.decode("utf-8") + " Size: " + str(file_size))
+        print('\nFile: ' + file_name.decode("utf-8") + " Size: " + str(file_size))
         filenm = file_name.decode()
         
         if extract:
@@ -101,9 +104,17 @@ def read_sddl(input_file, crypto_key_file, output_folder):
             decrypted_data = decrypt_payload_unpad(key, iv, file_content)
             if decrypted_data.startswith(b'\x11\x22\x33\x44') and not filenm == "SDIT.FDI": #header of obfuscated file, SDIT.FDI also has this header but seems to work differently so its skipped
                 print("- Deciphering file...")
+                if verbose:
+                    print("FILE HEADER:")
+                    print("1.BLOCK INDEX ", struct.unpack('>H', decrypted_data[32:34])[0])  #unused
+                    print("2.CONTROL BYTES ", decrypted_data[34:36])
+                    print("3.DATA SIZE ", struct.unpack('>I', decrypted_data[36:40])[0])
+                    print("4.DECRYPT SIZE ", struct.unpack('>I', decrypted_data[40:44])[0]) #unused
+                    print("5.UNZLIB CRC32 ", decrypted_data[44:48]) #unused
+
                 #control bytes
                 control_bytes = decrypted_data[34:36]
-                #size of data after decryptiom
+                #size of data
                 data_size = struct.unpack('>I', decrypted_data[36:40])[0]
                 #verify the data size
                 assert len(decrypted_data[48:]) == data_size
@@ -117,8 +128,13 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                     print("-- Skipping uncompressed file...")
                     out_data = decipher_data
 
+                if verbose:
+                    print("CONTENT HEADER:")
+                    print("1.DEST OFFSET ", str(hex(struct.unpack(">I", out_data[1:5])[0]))) #unused
+                    print("2. SOURCE OFFSET ", str(hex(struct.unpack(">I", b'\x00' + out_data[6:9])[0]))) #00 added because older SDDL files have random byte there for unknown reason.
+                    print("3. SIZE ", struct.unpack(">I", out_data[9:13])[0]) #unused
+
                 file_offset = struct.unpack(">I", b'\x00' + out_data[6:9])[0]
-                #print("OFFSET: " + str(hex(file_offset)))
                 
                 if filenm.startswith("PEAKS.F") and join_peaks:
                     output_path = os.path.join(output_folder, "PEAKS.bin")
@@ -144,10 +160,11 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         print("\nScript done!")
 
 if __name__ == "__main__":
-    print("sddl_dec Tool Version 3.1")
-    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.1')
+    print("sddl_dec Tool Version 3.2")
+    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.2')
     
     parser.add_argument('-l', action='store_true', help='List the files but dont extract them.')
+    parser.add_argument('-v', action='store_true', help='Verbose mode - print detailed information about extraction process.')
     parser.add_argument('-nj', action='store_true', help='Dont join PEAKS.F files.')
     parser.add_argument('-kt', action='store_true', help='Keep .TXT files from the SDDL.SEC file.')
     parser.add_argument('input_file', help='SDDL.SEC file to decrypt.')
@@ -156,6 +173,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     extract = not args.l
+    verbose = args.v
     join_peaks = not args.nj
     skip_txt = not args.kt
 

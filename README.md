@@ -7,12 +7,13 @@ This script uses information about SDDL.SEC files found by NeSE Team for JustCTF
 The provided key file can extract *most* SDDL.SEC files from TVs released after 2011. Older files seem to use a different key/obfuscation method of the key. If you want to try your own, you can find it in `/usr/local/customer_dl/crypto_key` on the TV.  
 ## Usage
 Dependancies: `Crypto.Cipher`  
-`sddl_dec.py [-h] [-l] [-nj] [-kt] input_file crypto_key_file [output_folder]`  
+`sddl_dec.py [-h] [-l] [-v] [-nj] [-kt] input_file crypto_key_file [output_folder]`  
 `input_file` - The SDDL.SEC file to extract.  
 `crypto_key_file` - Crypto key to be used to decrypt the file.  
 `output_folder` - Folder to save extracted files to. Default: "out"  
 `-h` - Show help message.  
 `-l` - List contents of the file without extracting them.  
+`-v` - Verbose mode - print detailed information about extraction process.  
 `-nj` - Don't join PEAKS files. (read more below)  
 `-kt` - Keep TXT files. (read more below)  
 ## About SDDL.SEC and the output of the program
