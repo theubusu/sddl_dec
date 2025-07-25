@@ -17,11 +17,11 @@ Dependancies: `Crypto.Cipher`
 `-nj` - Don't join PEAKS files. (read more below)  
 `-kt` - Keep TXT files. (read more below)  
 ## About SDDL.SEC and the output of the program
-An SDDL.SEC file is an encrypted, obfuscated and partially compressed archive that contains the firmware data for the TV.
+An SDDL.SEC file is an encrypted, ciphered and partially compressed archive that contains the firmware data for the TV.
 It has a 32 byte header, that mostly remains the same between files, but its structure is unknown, and a 128 or 256(in later files) byte footer, which is most likely a signature.  
 The main contents of the file can consist of:
-- SDIT.FDI - looks to be some sort of partition table, or table of contents, format is currently unknown.
-- A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because somtimes theres over 40 of them (why?) and they are not important. You can prevent that with the `-kt` option.)
+- SDIT.FDI - looks like it stores some kind of configuration data for different models, format is currently unknown.
+- A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because somtimes theres over 40 of them for some reason and they are not important. You can prevent that with the `-kt` option.)
 - PEAKS.FXX Files - these are the main firmware data split into chunks, usually of 2/4MB of size - they are combined into one PEAKS.bin file by default, you can prevent this by using `-nj` option.
 The output of the PEAKS files varies depending on the TV's platform, from my findings the structure is:
     - For 2011-2013 models, and some later "dumb" models, the output contains the FreeBSD kernel, UFS rootfs filesystem and a UFS filesystem (/usr) compressed by unknown method (This format is complicated and not yet fully known)
