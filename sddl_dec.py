@@ -54,11 +54,11 @@ def decipher(s, len_):
         return out
 
 def read_sddl(input_file, crypto_key_file, output_folder):
-    print("Input file: ", input_file)
+    print("Input file:", input_file)
     with open(input_file, 'rb') as f:
         sddl_buf = bytearray(f.read()) 
        
-    print("Key file: ", crypto_key_file)    
+    print("Key file:", crypto_key_file)    
     with open(crypto_key_file, 'rb') as f:
         key_buf = bytearray(f.read())
         
@@ -70,29 +70,24 @@ def read_sddl(input_file, crypto_key_file, output_folder):
     off = 0x20
     
     while off < len(sddl_buf):
-        #read header of entry with 0x20 lenght and decrypt it
         hdr = decrypt_payload_unpad(key, iv, sddl_buf[off:off+0x20])
-        #read null-terminated string - file name
         file_name = hdr.split(b'\0')[0]
-        #read from byte 16 - file size as ASCII
         try:
             file_size = int(hdr[16:].decode())
         except ValueError as e:
             # SDDL files can have a footer(signature?) of 0x80 OR 0x100 lenght in later ones, and there is no good way to detect it before entering the while loop and the footer has no common header.
             # so we can assume if a file fails to decode at negative offsets 0x80 or 0x100, that is the footer and it can be skipped.
             if off == len(sddl_buf)-0x80:
-                print("\nFound footer at 0x80 end, skipping") 
+                print("\nFound footer at 0x80 end!") 
                 break
             if off == len(sddl_buf)-0x100:
-                print("\nFound footer at 0x100 end!, skipping") 
+                print("\nFound footer at 0x100 end!") 
                 break
             else:
                 print("!!Decryption error!! This file is not compatible!")
                 return
                 
-        #read the files' content from buf with the read file size
         file_content = sddl_buf[off+0x20:off+0x20+file_size]
-        #advancing the offset for next file
         off += 0x20 + file_size
         print('\nFile: ' + file_name.decode("utf-8") + " Size: " + str(file_size))
         filenm = file_name.decode()
@@ -105,27 +100,35 @@ def read_sddl(input_file, crypto_key_file, output_folder):
             if decrypted_data.startswith(b'\x11\x22\x33\x44') and not filenm == "SDIT.FDI": #header of obfuscated file, SDIT.FDI also has this header but seems to work differently so its skipped   
                 if verbose:
                     print("FILE HEADER:")
-                    print("- OLD VERSION(CPKS):", decrypted_data[20:24])
-                    print("- NEW VERSION(NPKS):", decrypted_data[24:28])
-                    print("1.BLOCK INDEX ", struct.unpack('>H', decrypted_data[32:34])[0])  #unused
-                    print("2.CONTROL BYTES ", decrypted_data[34:36])
-                    print("3.DATA SIZE ", struct.unpack('>I', decrypted_data[36:40])[0])
-                    print("4.DECRYPT SIZE ", struct.unpack('>I', decrypted_data[40:44])[0]) #unused
-                    print("5.UNZLIB CRC32 ", decrypted_data[44:48]) #unused
+                    print("-ID:", decrypted_data[5])
+                    if 8 <= decrypted_data[5] <= 20:
+                        print("--Year guess:", decrypted_data[5] + 2003)
+                    print("-BASE VERSION?:", decrypted_data[16:20])
+                    print("-OLD VERSION:", decrypted_data[20:24])
+                    print("-VERSION(NPKS):", decrypted_data[24:28])
+                    print("1.BLOCK INDEX:", struct.unpack('>H', decrypted_data[32:34])[0])  #unused
+                    print("2.CONTROL BYTES:", decrypted_data[34:36])
+                    print("3.COMPRESSED SIZE:", struct.unpack('>I', decrypted_data[36:40])[0])
+                    print("4.DECOMPRESSED SIZE:", struct.unpack('>I', decrypted_data[40:44])[0]) #unused
+                    print("5.CHECKSUM:", decrypted_data[44:48]) #unused
 
                 #file version
                 version_major = decrypted_data[24]
                 version_minor = int(f"{decrypted_data[25]}{decrypted_data[26]}{decrypted_data[27]}")
                 print(f"- Version: {version_major}.{version_minor}")
+                
                 #control bytes
                 control_bytes = decrypted_data[34:36]
+                
                 #size of data
                 data_size = struct.unpack('>I', decrypted_data[36:40])[0]
+                
                 #verify the data size
                 assert len(decrypted_data[48:]) == data_size
 
                 print("- Deciphering file...")
                 decipher_data = decipher(decrypted_data[48:], len(decrypted_data[48:]))
+                
                 if control_bytes.startswith(b'\x03'): #03 - file is compressed
                     #decompress a compressed file
                     print("-- Decompressing file...")
@@ -134,36 +137,47 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                     #file is not compressed, write raw data.
                     print("-- Skipping uncompressed file...")
                     out_data = decipher_data
+                
+                dest_offset_bytes = bytearray(out_data[1:5])
+                if dest_offset_bytes[0] & 0xF0 == 0xD0:
+                    if verbose:
+                        print("Pre2013 detected!")
+                    dest_offset_bytes[0] &= 0x0F
+                else:
+                    if verbose:
+                        print("2014+ detected!")
+                        
+                dest_offset = struct.unpack(">I", dest_offset_bytes)[0]        
+                source_offset = struct.unpack(">I", b'\x00' + out_data[6:9])[0] #Safe trust me
 
                 if verbose:
                     print("CONTENT HEADER:")
-                    print("1.DEST OFFSET ", str(hex(struct.unpack(">I", out_data[1:5])[0]))) #unused
-                    print("2. SOURCE OFFSET ", str(hex(struct.unpack(">I", b'\x00' + out_data[6:9])[0]))) #00 added because older SDDL files have random byte there for unknown reason.
-                    print("3. SIZE ", struct.unpack(">I", out_data[9:13])[0]) #unused
-
-                file_offset = struct.unpack(">I", b'\x00' + out_data[6:9])[0]
-                
+                    print("1.DEST OFFSET:", str(hex(dest_offset)))
+                    print("2.SOURCE OFFSET:", str(hex(source_offset)))
+                    print("3.SIZE:", struct.unpack(">I", out_data[9:13])[0])
+                    
                 if filenm.startswith("PEAKS.F") and join_peaks:
                     output_path = os.path.join(output_folder, "PEAKS.bin")
-                    with open(output_path, "ab") as f:
-                        f.write(out_data[file_offset:])
-                    print("--- Appended to PEAKS.bin!")
+                    try:
+                        f = open(output_path, "r+b")
+                    except FileNotFoundError:
+                        f = open(output_path, "w+b")
+                    f.seek(dest_offset)
+                    f.write(out_data[source_offset:])
+                    print("--- Saved to PEAKS.bin!")
                 else:
                     output_path = os.path.join(output_folder, filenm)
                     with open(output_path, 'wb') as f:
-                        f.write(out_data[file_offset:])
+                        f.write(out_data[source_offset:])
                     print("--- Saved file!")
+                
             else:
                 if filenm.endswith(".TXT") and skip_txt:
                     print(decrypted_data.decode())
                 else:
                     if filenm == "SDIT.FDI":
                         if verbose:
-                            print("- OLD VERSION(CPKS):", decrypted_data[28:32])
-                            print("- NEW VERSION(NPKS):", decrypted_data[32:36])
-                        version_major = decrypted_data[32]
-                        version_minor = int(f"{decrypted_data[33]}{decrypted_data[34]}{decrypted_data[35]}")
-                        print(f"- Version: {version_major}.{version_minor}")
+                            print("- NO OF ENTRIES:", decrypted_data[4])
                     output_path = os.path.join(output_folder, filenm)
                     with open(output_path, 'wb') as f:
                         f.write(decrypted_data)
@@ -174,8 +188,8 @@ def read_sddl(input_file, crypto_key_file, output_folder):
         print("\nScript done!")
 
 if __name__ == "__main__":
-    print("sddl_dec Tool Version 3.3")
-    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.3')
+    print("sddl_dec Tool Version 3.5 (22/08/2025)")
+    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.5')
     
     parser.add_argument('-l', action='store_true', help='List the files but dont extract them.')
     parser.add_argument('-v', action='store_true', help='Verbose mode - print detailed information about extraction process.')
