@@ -135,17 +135,17 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                     out_data = zlib.decompress(decipher_data, zlib.MAX_WBITS)      
                 else: #02 - file is not compressed
                     #file is not compressed, write raw data.
-                    print("-- Skipping uncompressed file...")
+                    print("-- Uncompressed file...")
                     out_data = decipher_data
                 
                 dest_offset_bytes = bytearray(out_data[1:5])
                 if dest_offset_bytes[0] & 0xF0 == 0xD0:
                     if verbose:
-                        print("Pre2013 detected!")
+                        print("! Pre2013 detected!")
                     dest_offset_bytes[0] &= 0x0F
                 else:
                     if verbose:
-                        print("2014+ detected!")
+                        print("! 2014+ detected!")
                         
                 dest_offset = struct.unpack(">I", dest_offset_bytes)[0]        
                 source_offset = struct.unpack(">I", b'\x00' + out_data[6:9])[0] #Safe trust me
@@ -155,22 +155,38 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                     print("1.DEST OFFSET:", str(hex(dest_offset)))
                     print("2.SOURCE OFFSET:", str(hex(source_offset)))
                     print("3.SIZE:", struct.unpack(">I", out_data[9:13])[0])
+                
+                if source_offset == 270: #unique to 2014-2018 files
+                    if verbose:
+                        print("! 2014-2018 tgz detected!")
+                    filename = out_data[14:270].split(b'\0')[0].decode()
+                    print("-- Embedded file:", filename)
+                    sub_folder = os.path.join(output_folder, "PEAKS")
+                    if not os.path.exists(sub_folder):
+                        os.makedirs(sub_folder)
+                    output_path = os.path.join(sub_folder, filename)
+                else:
+                    filename = "PEAKS.bin"
+                    sub_folder = None
+                    output_path = os.path.join(output_folder, filename)
                     
-                if filenm.startswith("PEAKS.F") and join_peaks:
-                    output_path = os.path.join(output_folder, "PEAKS.bin")
+                if filenm.startswith("PEAKS.F"):   
                     try:
                         f = open(output_path, "r+b")
                     except FileNotFoundError:
                         f = open(output_path, "w+b")
                     f.seek(dest_offset)
                     f.write(out_data[source_offset:])
-                    print("--- Saved to PEAKS.bin!")
+                    if sub_folder:
+                        print(f"--- Saved to PEAKS/{filename}!")
+                    else:
+                        print(f"--- Saved to {filename}!")
                 else:
                     output_path = os.path.join(output_folder, filenm)
                     with open(output_path, 'wb') as f:
                         f.write(out_data[source_offset:])
                     print("--- Saved file!")
-                
+                    
             else:
                 if filenm.endswith(".TXT") and skip_txt:
                     print(decrypted_data.decode())
@@ -183,17 +199,16 @@ def read_sddl(input_file, crypto_key_file, output_folder):
                         f.write(decrypted_data)
                     print("- Saved file!")
     if extract:
-        print("\nScript done! Saved extracted files to ", output_folder)
+        print("\nScript done! Saved extracted files to", output_folder)
     else:
         print("\nScript done!")
 
 if __name__ == "__main__":
-    print("sddl_dec Tool Version 3.5 (22/08/2025)")
-    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.5')
+    print("sddl_dec Tool Version 3.6 (22/08/2025)")
+    parser = argparse.ArgumentParser(description='sddl_dec Tool Version 3.6')
     
     parser.add_argument('-l', action='store_true', help='List the files but dont extract them.')
     parser.add_argument('-v', action='store_true', help='Verbose mode - print detailed information about extraction process.')
-    parser.add_argument('-nj', action='store_true', help='Dont join PEAKS.F files.')
     parser.add_argument('-kt', action='store_true', help='Keep .TXT files from the SDDL.SEC file.')
     parser.add_argument('input_file', help='SDDL.SEC file to decrypt.')
     parser.add_argument('crypto_key_file', help='Key to decrypt the file.')
@@ -202,7 +217,6 @@ if __name__ == "__main__":
     
     extract = not args.l
     verbose = args.v
-    join_peaks = not args.nj
     skip_txt = not args.kt
 
     read_sddl(args.input_file, args.crypto_key_file, args.output_folder) 
