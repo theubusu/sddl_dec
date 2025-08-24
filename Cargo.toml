@@ -1,0 +1,14 @@
+[package]
+name = "sddl_dec"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aes = "0.8.4"
+cbc = "0.1.2"
+clap = { version = "4.5", features = ["derive"] }
+flate2 = "1.0"
+
+[[bin]]
+name = "sddl_dec"
+path = "main.rs"
