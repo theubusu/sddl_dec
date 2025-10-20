@@ -91,7 +91,7 @@ fn decompress_zlib(data: &[u8]) -> io::Result<Vec<u8>> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("sddl_dec Tool Version 4.0");
+    println!("sddl_dec Tool Version 4.1");
     let args = Args::parse();
 
     let file_path = args.input_file;
