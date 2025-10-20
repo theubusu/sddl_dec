@@ -1,11 +1,11 @@
 # sddl_dec
-Tool for decrypting Panasonic TV SDDL.SEC files. New version 4.0 rewritten in Rust for up to 25x the speed! 
+Tool for decrypting Panasonic TV SDDL.SEC files. New version 4.0 rewritten in Rust for up to 25x the speed!  
 This tool will decrypt and unpack the files from an SDDL.SEC firmware update package used on Panasonic TVs.  
 **Notice:** The tool will not directly extract the contents of the firmware by itself! It only unpacks and decrypts the SDDL.SEC file. To inspect the output of the program, use a tool like [binwalk](github.com/ReFirmLabs/binwalk). To see what you can expect, read more below.
 ## Support
-The tool extract SDDL.SEC files from TVs released in and after 2011. Older files seem to use a different format.
+The tool will extract SDDL.SEC files from TVs released in and after 2011. Older files seem to use a different format.
 ## Installation
-You can either:
+You can either:  
 Download one of the prebuilt binaries from the Releases tab,  
 or build from source, by downloading the code and running `cargo build --release`. The binary will be saved in `target/release`.  
   
