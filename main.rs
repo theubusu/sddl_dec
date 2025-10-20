@@ -129,13 +129,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // SDDL files can have a footer(signature?) of 0x80 OR 0x100 lenght in later ones, and there is no good way to detect it before entering the while loop and the footer has no common header.
                 // so we can assume if a file fails to decode at negative offsets 0x80 or 0x100, that is the footer and it can be skipped.
                 if offset == file_size - 128 {
-                    if verbose{println!{"Found footer at negative 0x80!"};};
+                    if verbose{println!("Found footer at negative 0x80!");};
                     break
-                } else if offset == file_size - 256{
-                    if verbose{println!{"Found footer at negative 0x100!"};};
+                } else if offset == file_size - 256 {
+                    if verbose{println!("Found footer at negative 0x100!")};
                     break
                 } else {
-                    println!{"!!Decryption error!! This file is invalid or not compatible!"};
+                    println!("!!Decryption error!! This file is invalid or not compatible!");
                     std::process::exit(0)
                 }
             },
@@ -206,27 +206,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if verbose{println!("3. Size: {}", u32::from_be_bytes([out_data[9], out_data[10], out_data[11], out_data[12]]));};
 
             let path: PathBuf; 
-            let msg: &str;
+            let msg: String;
 
-            if filename.starts_with("PEAKS.F") {
-                if source_offset == 270 {   //unique for 2014-2018 files
-                    if verbose{println!{"2014-2018 detected!"}}
-                    let embedded_file_name_string = String::from_utf8_lossy(&out_data[14..270]);
-                    let embedded_file_name = embedded_file_name_string.split("\0").next().unwrap();
-                    println!("--- Embedded file: {}", embedded_file_name);
+            let source_name = filename.split(".").next().unwrap();
+
+            if source_offset == 270 {   //unique for 2014-2018 files
+                if verbose{println!("2014-2018 detected!")}
+                let embedded_file_name_string = String::from_utf8_lossy(&out_data[14..270]);
+                let embedded_file_name = embedded_file_name_string.split("\0").next().unwrap();
+                println!("--- Embedded file: {}", embedded_file_name);
     
-                    let folder_path = Path::new(&output_path).join("PEAKS");
-                    fs::create_dir_all(&folder_path)?;
-                    path = Path::new(&folder_path).join(embedded_file_name);
-                    msg = "to PEAKS";
-                } else {
-                    path = Path::new(&output_path).join("PEAKS.bin");
-                    msg = "to PEAKS.bin";
-                }            
+                let folder_path = Path::new(&output_path).join(source_name);
+                fs::create_dir_all(&folder_path)?;
+                path = Path::new(&folder_path).join(embedded_file_name);
+                msg = format!("to {}", source_name);
             } else {
-                path = Path::new(&output_path).join(filename);
-                msg = "file";
-            }
+                path = Path::new(&output_path).join(format!("{}.bin", source_name));
+                msg = format!("to {}.bin", source_name);
+            }            
 
             fs::create_dir_all(&output_path)?;
             let mut file = OpenOptions::new()

@@ -25,9 +25,9 @@ The main contents of the file can consist of:
 - A bunch of XXX.TXT files which contain the target and version of the update (These are skipped by default and printed to output instead because sometimes theres over 40 of them for some reason and they are not important. You can prevent that with the `-k` option.)
 - PEAKS.FXX Files - these are the main firmware data split into chunks, usually of 2/4MB of size - they are saved into a PEAKS.bin file, or in case of 2014-2018 files, the files embedded inside will be saved into a PEAKS folder.
 The output of the PEAKS files varies depending on the TV's platform, from my findings the structure is:
-    - For 2011-2013 models, and some later "dumb" models, the output blob contains the FreeBSD kernel, UFS rootfs filesystem and a UFS filesystem (/usr) compressed by unknown method (This format is complicated and not yet fully known)
+    - For 2011-2013 models, and some later "dumb" models, the output blob contains the FreeBSD kernel and UFS filesystem(s).
     - For 2014-~2018? models - the output are 2 files in a PEAKS folder: "root.tgz" containing the rootfs filesystem, and a "DLDATA_LIST.TXT" file which specifies the partition it should be installed to.
     - For 2019+ models - the output blob contains a bootloader, DTB and rootfs squashfs filesystem (binwalk)
-- PEAKSBT.F00 - bootloader
-- BOOT.F00 - bootloader
-- STM.F00 - some kind of firmware file, maybe micom firmware
+- PEAKSBT.FXX - bootloader
+- BOOT.FXX - bootloader
+- STM.FXX - some kind of firmware file, maybe micom firmware

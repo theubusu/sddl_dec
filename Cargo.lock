@@ -260,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "sddl_dec"
-version = "0.1.0"
+version = "4.1.0"
 dependencies = [
  "aes",
  "cbc",
