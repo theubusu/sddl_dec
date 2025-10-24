@@ -5,9 +5,7 @@ This tool will decrypt and unpack the files from an SDDL.SEC firmware update pac
 ## Support
 The tool will extract SDDL.SEC files from TVs released in and after 2011. Older files seem to use a different format.
 ## Installation
-You can either:  
-Download one of the prebuilt binaries from the Releases tab,  
-or build from source, by downloading the code and running `cargo build --release`. The binary will be saved in `target/release`.  
+Build from source, by downloading the code and running `cargo build --release`. The binary will be saved in `target/release`.  
   
 If you prefer to use the old python version, you can find it in the `python` branch.
 ## Usage
