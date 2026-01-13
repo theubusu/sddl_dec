@@ -29,3 +29,5 @@ The output of the PEAKS files varies depending on the TV's platform, from my fin
 - PEAKSBT.FXX - bootloader
 - BOOT.FXX - bootloader
 - STM.FXX - some kind of firmware file, maybe micom firmware
+# License
+Licensed under GNU GPL v3.  
