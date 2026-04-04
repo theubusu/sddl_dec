@@ -1,6 +1,6 @@
 [package]
 name = "sddl_dec"
-version = "6.0.0"
+version = "7.0.0"
 edition = "2024"
 
 [dependencies]
@@ -9,3 +9,5 @@ cbc = "0.1.2"
 clap = { version = "4.5", features = ["derive"] }
 flate2 = "1.0"
 binrw = "0.15"
+hex = "0.4.3"
+des = "0.8.1"

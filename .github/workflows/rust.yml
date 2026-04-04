@@ -11,16 +11,25 @@ env:
 
 jobs:
   build:
+  
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose --release
-    - name: Upload release artifact
-      uses: actions/upload-artifact@v4
-      with:
-          name: sddl_dec
-          path: target/release/sddl_dec
+      run: cargo build --release
 
+    - uses: actions/upload-artifact@v4
+      with:
+        name: sddl_dec-${{ matrix.label }}-auto
+        path: |
+          target/release/sddl_dec
+          target/release/sddl_dec.exe

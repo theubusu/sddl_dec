@@ -1,11 +1,14 @@
 mod include;
+mod peaks;
+mod sdboot;
 use std::path::{Path, PathBuf};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Cursor, Seek, SeekFrom, Write};
 use clap::Parser;
 use binrw::{BinReaderExt};
-use crate::include::{read_exact, decrypt, decipher, decompress_zlib, DOWNLOAD_ID, TDI_FILENAME, SUPPORTED_TDI_VERSION, INFO_FILE_EXTENSION,
-                    SecHeader, FileHeader, ModuleComHeader, ModuleHeader, ContentHeader, TdiHead, TdiGroupHead, TdiTgtInf};
+use crate::include::*;
+use crate::sdboot::extract_sdboot;
+use peaks::split_peaks_file;
 
 /// Tool for decrypting and unpacking Panasonic TV SDDL.SEC update files. 
 #[derive(Parser, Debug)]
@@ -18,14 +21,66 @@ struct Args {
     #[arg(short = 's')]
     save_extra: bool,
 
+    /// Extract an SDBOOT-type file
+    #[arg(short = 'b')]
+    extract_sdboot: bool,
+
+    /// Split an old PEAKS file
+    #[arg(short = 'p')]
+    split_peaks: bool,
+
+    /// PEAKS args offset
+    #[arg(short = 'a', default_value_t=16)]
+    peaks_args_offset: u64,
+
     input_file: String,
     output_folder: Option<String>,
 }
 
-fn get_sec_file(mut file: &File) -> Result<(FileHeader, Vec<u8>), Box<dyn std::error::Error>> {
-    let mut hdr_reader = Cursor::new(decrypt(&read_exact(&mut file, 32)?)?);
+fn get_sec_file(mut file: &File, key_entry: &KeyEntry, verbose: bool) -> Result<(FileHeader, Vec<u8>), Box<dyn std::error::Error>> {
+    //new type check because only new is Pcks7.. i know
+    let new_type = match key_entry {
+        KeyEntry::AESPcks7(_) => true,
+        _ => false
+    };
+
+    let dec_header = KeyEntry::decrypt(key_entry, &read_exact(&mut file, 32)?)?;
+    let mut hdr_reader = Cursor::new(dec_header);
     let file_header: FileHeader = hdr_reader.read_be()?;
-    let file_data = decrypt(&read_exact(&mut file, file_header.size() as usize)?)?;
+
+    let enc_size= if new_type {
+        file_header.size() as usize
+    } else {
+        //extra ciphered data before encrypted data, prefixed by size, like "0021XXXXXX PEAKS.T00/12900002"
+        //this counts into file size but not decrypt size
+        let extra_size: usize = string_from_bytes(&read_exact(&mut file, 4)?).parse().unwrap();
+        let extra_data = read_exact(&mut file, extra_size)?;
+        if verbose {
+            let dec_extra_data = string_from_bytes(&decipher(&extra_data));
+            println!("- Extr 1 (Size: {}) - {}", extra_size, dec_extra_data);
+        }
+
+        file_header.size() as usize - (extra_size + 4)
+    };
+
+    let dec_data = KeyEntry::decrypt(key_entry, &read_exact(&mut file, enc_size)?)?;
+    let file_data = if new_type {
+        dec_data
+    } else {
+        let mut data_rdr = Cursor::new(dec_data);
+
+        //extra info in enc data, like "0021XXXXXX PEAKS.T00/12900002000000571800"
+        //part before size looks to be a duplicate of previous extra data, probably for signing purpose, size used for unpad
+        let extra_size: usize = string_from_bytes(&read_exact(&mut data_rdr, 4)?).parse().unwrap();
+        let extra_data = read_exact(&mut data_rdr, extra_size + 4)?;
+        if verbose {
+            let dec_extra_data = string_from_bytes(&extra_data);
+            println!("- Extr 2 (Size: {}) - {}", extra_size, dec_extra_data);
+        }
+
+        let data_size: usize = string_from_bytes(&read_exact(&mut data_rdr, 12)?).parse().unwrap();
+        read_exact(&mut data_rdr, data_size)?
+    };
 
     Ok((file_header, file_data))
 }
@@ -65,7 +120,7 @@ fn parse_tdi_to_modules(tdi_data: Vec<u8>, verbose: bool) -> Result<Vec<TdiTgtIn
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("sddl_dec Tool Version 6.0");
+    println!("sddl_dec Tool Version 7.0");
     let args = Args::parse();
 
     let input_file = args.input_file;
@@ -81,6 +136,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let save_extra = args.save_extra;
     let verbose = args.verbose;
+    
+    //sub progs
+    if args.extract_sdboot {
+        println!("- Extracting SDBOOT...");
+        return extract_sdboot(file_path, &output_folder)
+    }
+    if args.split_peaks {
+        println!("- Splitting PEAKS file (args offset: {})...", args.peaks_args_offset);
+        return split_peaks_file(&file_path, &PathBuf::from(output_folder), args.peaks_args_offset)
+    }
+    // ---
+
     let mut file = File::open(file_path)?;
 
     let mut secfile_hdr_reader = Cursor::new(decipher(&read_exact(&mut file, 32)?));
@@ -88,10 +155,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if secfile_header.download_id != DOWNLOAD_ID {
         return Err("Invalid secfile header!".into());
     }
-    println!("File info -\nKey ID: {}\nGroup count: {}\nModule file count: {}\n", secfile_header.key_id(), secfile_header.grp_num(), secfile_header.prg_num());
-    fs::create_dir_all(&output_folder)?;
+    println!("File info -\nKey ID: {}\nGroup count: {}\nModule file count: {}", secfile_header.key_id(), secfile_header.grp_num(), secfile_header.prg_num());
 
-    let (tdi_file, tdi_data) = get_sec_file(&file)?;
+    //by knowing that the first file is always SDIT.FDI, find key(and mode)
+    let try_hdr = read_exact(&mut file, 0x20)?;
+
+    let mut key: Option<KeyEntry> = None;
+
+    //for new, key will always be the same
+    if let Ok(dec) = decrypt_aes(&try_hdr, &NEW_KEY, true) {
+        if dec.starts_with(TDI_FILENAME.as_bytes()) {
+            println!("- New type detected\n");
+            key = Some(KeyEntry::AESPcks7(NEW_KEY));
+        }
+    }
+    //new did not match, try all old AES keys
+    if key.is_none() {
+        for key_entry in OLD_KEYS_AES {
+            let dec = decrypt_aes(&try_hdr, &key_entry, false)?;
+            if dec.starts_with(TDI_FILENAME.as_bytes()) {
+                println!("- Old type detected with AES key={}, iv={}\n", hex::encode(key_entry.key) ,hex::encode(key_entry.iv));
+                key = Some(KeyEntry::AES(key_entry));
+                break
+            }
+        }        
+    }
+    //...old DES keys
+    if key.is_none() {
+        for key_entry in OLD_KEYS_DES {
+            let dec = decrypt_3des(&try_hdr, &key_entry)?;
+            if dec.starts_with(TDI_FILENAME.as_bytes()) {
+                println!("- Old type detected with DES key={}, iv={}\n", hex::encode(key_entry.key) ,hex::encode(key_entry.iv));
+                key = Some(KeyEntry::DES(key_entry));
+                break
+            }
+        }        
+    }
+    //nothing matched, quit
+    if key.is_none() {
+        return Err("No matching key found!".into());
+    }
+
+    // -- key search end
+
+    let key = key.unwrap();
+    fs::create_dir_all(&output_folder)?;
+    file.seek(SeekFrom::Start(0x20))?;
+
+    let (tdi_file, tdi_data) = get_sec_file(&file, &key, verbose)?;
     println!("[TDI] Name: {}, Size: {}", tdi_file.name(), tdi_file.size());
     if save_extra { //Save SDIT
         let mut out_file = OpenOptions::new().write(true).create(true).open(Path::new(&output_folder).join(tdi_file.name()))?;
@@ -105,7 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     //get info files, each info file belongs to its respecitve group in the TDI
     for i in 0..secfile_header.grp_num() {
-        let (info_file, info_data) = get_sec_file(&file)?;
+        let (info_file, info_data) = get_sec_file(&file, &key, verbose)?;
         println!("\n[INFO] ID: {}, Name: {}, Size: {}", i, info_file.name(), info_file.size());
         if !info_file.name().ends_with(INFO_FILE_EXTENSION) {
             return Err(format!("Info file {} does not have the expected extension {}!", info_file.name(), INFO_FILE_EXTENSION).into());
@@ -124,7 +235,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 i+1, &modules.len(), module.module_name(), module.target_id, module.num_of_txx, module.version_string());
 
         for i in 0..module.num_of_txx {
-            let (module_file, module_data) = get_sec_file(&file)?;
+            let (module_file, module_data) = get_sec_file(&file, &key, verbose)?;
             if !module_file.name().starts_with(&module.module_name()) {
                 return Err(format!("Module file {} does not start with the module's name: {}!", module_file.name(), module.module_name()).into());
             }    
@@ -133,9 +244,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut module_reader = Cursor::new(module_data);
             let com_header: ModuleComHeader = module_reader.read_be()?;
             if verbose {println!("{:?}", com_header)};
-            if com_header.download_id != DOWNLOAD_ID {
-                return Err("Invalid module com_header!".into());
-            }
+            //if com_header.download_id != DOWNLOAD_ID {            it seems this can differ in some files
+            //    return Err("Invalid module com_header!".into());
+            //}
 
             let module_header: ModuleHeader = module_reader.read_be()?;
             if verbose {println!("{:?}", module_header)};
