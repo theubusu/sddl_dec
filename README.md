@@ -5,7 +5,7 @@ This tool will decrypt and unpack the files from an SDDL.SEC firmware update pac
 ## Support
 The tool should be able to extract all SDDL.SEC files.   
 ## Installation
-You can download the latest auto build for Windows and Linux x86-64 from [here](https://nightly.link/theubusu/sddl_dec/workflows/rust/main/sddl_dec).  
+You can download the latest auto build for Windows and Linux x86-64 from [here](https://nightly.link/theubusu/sddl_dec/workflows/rust/main).  
 Or, build from source, by downloading the code and running `cargo build --release`. The binary will be saved in `target/release`.  
 
 If you prefer to use the old python version, you can find it in the `python` branch (Please note that it is now very outdated, and no support will be provided).
